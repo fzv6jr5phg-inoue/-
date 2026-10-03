@@ -101,6 +101,11 @@
 
   .budget { display: flex; gap: 14px; align-items: center; cursor: pointer; }
   .budget .info { flex: 1; min-width: 0; }
+  .budget .head { display: flex; align-items: center; gap: 8px; }
+  .budget .head .name { flex: 1; }
+  .edit-btn { border: 2px solid var(--line); background: var(--card); color: var(--text); border-radius: 99px;
+    padding: 2px 10px; font-family: inherit; font-size: .75rem; font-weight: 700; cursor: pointer; flex-shrink: 0; }
+  .budget .see { font-size: .72rem; color: var(--muted); margin-top: 6px; text-align: right; }
   .budget .name { font-weight: 700; font-size: 1.05rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .budget .rest { font-size: 1.25rem; font-weight: 700; margin-top: 2px; }
   .budget .detail { font-size: .78rem; color: var(--muted); }
@@ -122,7 +127,7 @@
   .expense:last-child { border-bottom: none; }
   .expense .dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
   .expense .main { flex: 1; min-width: 0; }
-  .expense .memo { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .expense .memo { font-weight: 700; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.5; }
   .expense .meta { font-size: .75rem; color: var(--muted); }
   .expense .amt { font-weight: 700; white-space: nowrap; }
   .day-head { font-size: .8rem; color: var(--muted); margin: 10px 4px 0; font-weight: 700; }
@@ -132,6 +137,17 @@
   .tag.on { background: linear-gradient(90deg, var(--pink), var(--lav)); color: #fff; border-color: transparent; }
   .tag-filter { display: flex; flex-wrap: wrap; gap: 2px; margin-bottom: 6px; }
   .tag-filter .tag { cursor: pointer; font-size: .8rem; padding: 4px 12px; }
+  .filter-label { font-size: .72rem; font-weight: 700; color: var(--muted); margin: 0 2px 2px; }
+  .budget-chip { display: inline-flex; align-items: center; gap: 5px; }
+  .budget-chip i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+  .filter-summary { display: flex; align-items: center; gap: 12px; padding: 10px 2px 4px; border-top: 1.5px dashed var(--line); margin-top: 8px; }
+  .filter-summary .nums { flex: 1; min-width: 0; }
+  .filter-summary .rest { font-size: 1.15rem; font-weight: 700; }
+  .filter-summary .detail { font-size: .78rem; color: var(--muted); }
+  .hist-budgets { margin-top: 6px; }
+  .hist-budgets .hb { display: flex; justify-content: space-between; gap: 8px; font-size: .74rem; color: var(--muted); }
+  .hist-budgets .hb span:first-child { display: inline-flex; align-items: center; gap: 5px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .hist-budgets .hb i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
 
   .tag-stats .row { display: flex; justify-content: space-between; font-size: .88rem; padding: 4px 0; }
 
@@ -157,9 +173,10 @@
   .modal h2 { margin: 0 0 14px; font-size: 1.15rem; text-align: center; }
   .field { margin-bottom: 14px; }
   .field label { display: block; font-size: .8rem; font-weight: 700; margin-bottom: 5px; color: var(--muted); }
-  .field input, .field select { width: 100%; padding: 11px 14px; border-radius: 14px; border: 2px solid var(--line);
+  .field input, .field select, .field textarea { width: 100%; padding: 11px 14px; border-radius: 14px; border: 2px solid var(--line);
     background: var(--card); color: var(--text); font-family: inherit; font-size: 1rem; outline: none; }
-  .field input:focus, .field select:focus { border-color: var(--pink); }
+  .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--pink); }
+  .field textarea { resize: vertical; min-height: 4.5em; line-height: 1.5; }
   .tag-input-box { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; padding: 8px 10px; border-radius: 14px;
     border: 2px solid var(--line); background: var(--card); }
   .tag-input-box input { flex: 1; min-width: 6em; border: none; padding: 4px; background: transparent; outline: none; }
@@ -170,7 +187,7 @@
   .colors button { width: 34px; height: 34px; border-radius: 50%; border: 3px solid transparent; cursor: pointer; }
   .colors button.on { border-color: var(--text); }
 
-  .hist-row { display: flex; align-items: center; gap: 12px; padding: 10px 2px; border-bottom: 1.5px dashed var(--line); cursor: pointer; }
+  .hist-row { display: flex; align-items: flex-start; gap: 12px; padding: 10px 2px; border-bottom: 1.5px dashed var(--line); cursor: pointer; }
   .hist-row:last-child { border-bottom: none; }
   .hist-row .m { font-weight: 700; width: 6.5em; flex-shrink: 0; }
   .hist-row .b { flex: 1; }
@@ -206,16 +223,21 @@
   <!-- 記録 -->
   <section id="tab-records" hidden>
     <div class="card">
-      <div class="tag-filter" id="tagFilter"></div>
+      <div class="filter-label">予算でしぼる</div>
+      <div class="tag-filter" id="budgetFilter"></div>
+      <div id="tagFilterWrap"><div class="filter-label">タグでしぼる</div><div class="tag-filter" id="tagFilter"></div></div>
+      <div id="filterSummary"></div>
+    </div>
+    <div class="card">
       <div id="expenseList"></div>
     </div>
-    <div class="section-title"><span>🏷️ タグ別</span><small>この月</small></div>
+    <div class="section-title"><span>🏷️ タグ別</span><small id="tagStatsScope">この月</small></div>
     <div class="card tag-stats" id="tagStats"></div>
   </section>
 
   <!-- これまで -->
   <section id="tab-history" hidden>
-    <div class="section-title"><span>📖 これまでの記録</span><small>タップでその月へ</small></div>
+    <div class="section-title"><span>📖 これまでの記録</span><small>予算名タップでその支出へ</small></div>
     <div class="card" id="historyList"></div>
     <div class="section-title"><span>💾 バックアップ</span></div>
     <div class="card">
@@ -242,7 +264,7 @@
   <div class="modal">
     <h2 id="expenseTitle">支出をきろく ♡</h2>
     <div class="field"><label>金額（円）</label><input type="number" inputmode="numeric" min="0" id="exAmount" placeholder="500"></div>
-    <div class="field"><label>メモ</label><input type="text" id="exMemo" placeholder="カフェラテ"></div>
+    <div class="field"><label>メモ</label><textarea id="exMemo" rows="3" placeholder="カフェラテ"></textarea></div>
     <div class="field"><label>日付</label><input type="date" id="exDate"></div>
     <div class="field"><label>予算</label><select id="exBudget"></select></div>
     <div class="field">
@@ -313,6 +335,7 @@
   let currentMonth = monthOf(today());
   let currentTab = 'home';
   let tagFilter = null;
+  let budgetFilter = null; // null=すべて, '__none'=予算なし, それ以外=予算id
 
   const budgetsOf = m => (data.months[m] && data.months[m].budgets) || [];
   const expensesOf = m => data.expenses.filter(e => monthOf(e.date) === m);
@@ -373,13 +396,15 @@
       return `<div class="card budget" data-id="${b.id}">
         <div class="ring sm" style="--p:${Math.max(0, Math.min(100, p))};--c:${c}"><span class="${rest < 0 ? 'over' : ''}">${b.amount > 0 ? p + '%' : '—'}</span></div>
         <div class="info">
-          <div class="name">${esc(b.name)}</div>
+          <div class="head"><div class="name">${esc(b.name)}</div><button class="edit-btn" data-edit="${b.id}">✎ なおす</button></div>
           <div class="rest ${rest < 0 ? 'over' : ''}">のこり ${yen(rest)}</div>
           <div class="detail">${yen(spent)} ／ ${yen(b.amount)}${rest < 0 ? '　オーバー！' : ''}</div>
           <div class="bar"><div style="width:${Math.max(0, Math.min(100, p))}%;background:${c}"></div></div>
+          <div class="see">タップで支出を見る ›</div>
         </div></div>`;
     }).join('');
-    list.querySelectorAll('.budget').forEach(el => el.onclick = () => openBudget(el.dataset.id));
+    list.querySelectorAll('.budget').forEach(el => el.onclick = () => { budgetFilter = el.dataset.id; tagFilter = null; switchTab('records'); });
+    list.querySelectorAll('[data-edit]').forEach(el => el.onclick = ev => { ev.stopPropagation(); openBudget(el.dataset.edit); });
 
     const orphan = exps.filter(e => !findBudget(currentMonth, e.budgetId));
     if (orphan.length) {
@@ -411,9 +436,40 @@
   }
 
   function renderRecords() {
-    const exps = expensesOf(currentMonth);
+    const monthExps = expensesOf(currentMonth);
+    const budgets = budgetsOf(currentMonth);
+    const hasNone = monthExps.some(e => !findBudget(currentMonth, e.budgetId));
+    if (budgetFilter && !(budgetFilter === '__none' ? hasNone : budgets.some(b => b.id === budgetFilter))) budgetFilter = null;
+    const fb = budgetFilter && budgetFilter !== '__none' ? findBudget(currentMonth, budgetFilter) : null;
+
+    $('budgetFilter').innerHTML = `<span class="tag ${budgetFilter ? '' : 'on'}" data-b="">すべて</span>` +
+      budgets.map(b => `<span class="tag budget-chip ${b.id === budgetFilter ? 'on' : ''}" data-b="${b.id}"><i style="background:${b.color}"></i>${esc(b.name)}</span>`).join('') +
+      (hasNone ? `<span class="tag ${budgetFilter === '__none' ? 'on' : ''}" data-b="__none">予算なし</span>` : '');
+    $('budgetFilter').querySelectorAll('.tag').forEach(el => el.onclick = () => { budgetFilter = el.dataset.b || null; renderRecords(); });
+
+    const exps = !budgetFilter ? monthExps
+      : budgetFilter === '__none' ? monthExps.filter(e => !findBudget(currentMonth, e.budgetId))
+      : monthExps.filter(e => e.budgetId === budgetFilter);
+
+    if (fb) {
+      const spent = exps.reduce((s, e) => s + e.amount, 0);
+      const rest = fb.amount - spent;
+      const p = fb.amount > 0 ? Math.round(rest / fb.amount * 100) : 0;
+      const c = ratioColor(rest, fb.amount) || fb.color;
+      $('filterSummary').innerHTML = `<div class="filter-summary">
+        <div class="ring sm" style="--p:${Math.max(0, Math.min(100, p))};--c:${c}"><span class="${rest < 0 ? 'over' : ''}">${fb.amount > 0 ? p + '%' : '—'}</span></div>
+        <div class="nums"><div class="rest ${rest < 0 ? 'over' : ''}">のこり ${yen(rest)}</div>
+        <div class="detail">${esc(fb.name)}：${yen(spent)} ／ ${yen(fb.amount)}・${exps.length}件</div></div></div>`;
+    } else if (budgetFilter === '__none') {
+      $('filterSummary').innerHTML = `<div class="filter-summary"><div class="nums note">予算なし：${yen(exps.reduce((s, e) => s + e.amount, 0))}・${exps.length}件</div></div>`;
+    } else {
+      $('filterSummary').innerHTML = '';
+    }
+    $('tagStatsScope').textContent = fb ? `この月・${fb.name}` : budgetFilter === '__none' ? 'この月・予算なし' : 'この月';
+
     const tagsHere = [...new Set(exps.flatMap(e => e.tags || []))];
     if (tagFilter && !tagsHere.includes(tagFilter)) tagFilter = null;
+    $('tagFilterWrap').hidden = !tagsHere.length;
     $('tagFilter').innerHTML = tagsHere.length
       ? `<span class="tag ${tagFilter ? '' : 'on'}" data-tag="">すべて</span>` +
         tagsHere.map(t => `<span class="tag ${t === tagFilter ? 'on' : ''}" data-tag="${esc(t)}">#${esc(t)}</span>`).join('')
@@ -423,7 +479,7 @@
     const shown = exps.filter(e => !tagFilter || (e.tags || []).includes(tagFilter))
       .sort((a, b) => b.date.localeCompare(a.date) || (b.createdAt || 0) - (a.createdAt || 0));
     if (!shown.length) {
-      $('expenseList').innerHTML = `<div class="empty">この月の支出はまだありません ☁️<br>右下の ＋ からきろくできます</div>`;
+      $('expenseList').innerHTML = `<div class="empty">${budgetFilter ? 'この予算の支出はまだありません' : 'この月の支出はまだありません'} ☁️<br>右下の ＋ からきろくできます</div>`;
     } else {
       let html = '', lastDay = '';
       shown.forEach(e => {
@@ -466,10 +522,17 @@
         <div class="b">
           <div class="note" style="margin:0">つかった ${yen(spent)} ／ 予算 ${yen(total)}</div>
           <div class="bar"><div style="width:${Math.max(0, Math.min(100, p))}%;background:${c}"></div></div>
+          <div class="hist-budgets">${budgetsOf(m).map(b => {
+            const bs = expensesOf(m).filter(e => e.budgetId === b.id).reduce((s, e) => s + e.amount, 0);
+            return `<div class="hb" data-m="${m}" data-b="${b.id}"><span><i style="background:${b.color}"></i>${esc(b.name)}</span><span class="${bs > b.amount ? 'over' : ''}">${yen(bs)} ／ ${yen(b.amount)}</span></div>`;
+          }).join('')}</div>
         </div>
         <div class="${rest < 0 ? 'over' : ''}" style="font-weight:700;white-space:nowrap">${total > 0 ? p + '%' : '—'}</div></div>`;
     }).join('');
     $('historyList').querySelectorAll('.hist-row').forEach(el => el.onclick = () => { currentMonth = el.dataset.m; switchTab('home'); });
+    $('historyList').querySelectorAll('.hb').forEach(el => el.onclick = ev => {
+      ev.stopPropagation(); currentMonth = el.dataset.m; budgetFilter = el.dataset.b; tagFilter = null; switchTab('records');
+    });
   }
 
   function render() {
@@ -548,7 +611,7 @@
     $('exMemo').value = e ? e.memo : '';
     const defDate = monthOf(today()) === currentMonth ? today() : currentMonth + '-01';
     $('exDate').value = e ? e.date : defDate;
-    fillBudgetSelect(monthOf($('exDate').value), e ? e.budgetId : null);
+    fillBudgetSelect(monthOf($('exDate').value), e ? e.budgetId : (budgetFilter !== '__none' && currentTab === 'records' ? budgetFilter : null));
     exTags = e ? [...(e.tags || [])] : [];
     $('exTagInput').value = '';
     renderExTags();
