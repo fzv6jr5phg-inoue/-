@@ -140,10 +140,6 @@
   .filter-summary .nums { flex: 1; min-width: 0; }
   .filter-summary .rest { font-size: 1.15rem; font-weight: 700; }
   .filter-summary .detail { font-size: .78rem; color: var(--muted); }
-  .hist-budgets { margin-top: 6px; }
-  .hist-budgets .hb { display: flex; justify-content: space-between; gap: 8px; font-size: .74rem; color: var(--muted); }
-  .hist-budgets .hb span:first-child { display: inline-flex; align-items: center; gap: 5px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .hist-budgets .hb i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
 
   .tag-stats .row { display: flex; justify-content: space-between; font-size: .88rem; padding: 4px 0; }
 
@@ -183,10 +179,17 @@
   .colors button { width: 34px; height: 34px; border-radius: 50%; border: 3px solid transparent; cursor: pointer; }
   .colors button.on { border-color: var(--text); }
 
-  .hist-row { display: flex; align-items: flex-start; gap: 12px; padding: 10px 2px; border-bottom: 1.5px dashed var(--line); cursor: pointer; }
-  .hist-row:last-child { border-bottom: none; }
-  .hist-row .m { font-weight: 700; width: 6.5em; flex-shrink: 0; }
-  .hist-row .b { flex: 1; }
+  .hist-month { padding: 4px 0 12px; border-bottom: 1.5px dashed var(--line); margin-bottom: 10px; }
+  .hist-month:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+  .hist-head { display: flex; justify-content: space-between; align-items: baseline; font-weight: 700; font-size: 1.05rem; cursor: pointer; margin-bottom: 4px; }
+  .hist-head small { font-size: .72rem; color: var(--muted); font-weight: 500; }
+  .hb { padding: 8px 4px; cursor: pointer; border-radius: 12px; }
+  .hb-top { display: flex; justify-content: space-between; gap: 8px; font-weight: 700; font-size: .92rem; }
+  .hb-name { display: inline-flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .hb-name i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+  .hb-p { white-space: nowrap; }
+  .hb .bar { margin-top: 5px; height: 8px; }
+  .hb-sub { display: flex; justify-content: space-between; gap: 8px; font-size: .74rem; color: var(--muted); margin-top: 4px; }
 
   .toast { position: fixed; left: 50%; top: 18px; transform: translateX(-50%); z-index: 30; background: var(--card-solid);
     border: 2px solid var(--line); border-radius: 99px; padding: 8px 18px; box-shadow: var(--shadow); font-weight: 700;
@@ -232,7 +235,7 @@
 
   <!-- これまで -->
   <section id="tab-history" hidden>
-    <div class="section-title"><span>📖 これまでの記録</span><small>予算名タップでその支出へ</small></div>
+    <div class="section-title"><span>📖 これまでの記録</span><small>予算をタップでその支出へ</small></div>
     <div class="card" id="historyList"></div>
     <div class="section-title"><span>💾 バックアップ</span></div>
     <div class="card">
@@ -490,24 +493,29 @@
     const sorted = [...months].sort().reverse();
     if (!sorted.length) { $('historyList').innerHTML = `<div class="empty">まだ記録がありません ✧</div>`; return; }
     $('historyList').innerHTML = sorted.map(m => {
-      const total = budgetsOf(m).reduce((s, b) => s + b.amount, 0);
-      const spent = expensesOf(m).reduce((s, e) => s + e.amount, 0);
-      const rest = total - spent;
-      const p = total > 0 ? Math.round(rest / total * 100) : 0;
-      const c = ratioColor(rest, total) || 'var(--lav)';
-      return `<div class="hist-row" data-m="${m}">
-        <div class="m">${monthLabel(m)}</div>
-        <div class="b">
-          <div class="note" style="margin:0">つかった ${yen(spent)} ／ 予算 ${yen(total)}</div>
+      const exps = expensesOf(m);
+      const rows = budgetsOf(m).map(b => {
+        const spent = exps.filter(e => e.budgetId === b.id).reduce((s, e) => s + e.amount, 0);
+        const rest = b.amount - spent;
+        const p = b.amount > 0 ? Math.round(rest / b.amount * 100) : 0;
+        const c = ratioColor(rest, b.amount) || b.color;
+        return `<div class="hb" data-m="${m}" data-b="${b.id}">
+          <div class="hb-top"><span class="hb-name"><i style="background:${b.color}"></i>${esc(b.name)}</span>
+            <span class="hb-p ${rest < 0 ? 'over' : ''}">のこり ${b.amount > 0 ? p + '%' : '—'}</span></div>
           <div class="bar"><div style="width:${Math.max(0, Math.min(100, p))}%;background:${c}"></div></div>
-          <div class="hist-budgets">${budgetsOf(m).map(b => {
-            const bs = expensesOf(m).filter(e => e.budgetId === b.id).reduce((s, e) => s + e.amount, 0);
-            return `<div class="hb" data-m="${m}" data-b="${b.id}"><span><i style="background:${b.color}"></i>${esc(b.name)}</span><span class="${bs > b.amount ? 'over' : ''}">${yen(bs)} ／ ${yen(b.amount)}</span></div>`;
-          }).join('')}</div>
-        </div>
-        <div class="${rest < 0 ? 'over' : ''}" style="font-weight:700;white-space:nowrap">${total > 0 ? p + '%' : '—'}</div></div>`;
+          <div class="hb-sub"><span>つかった ${yen(spent)} ／ ${yen(b.amount)}</span><span class="${rest < 0 ? 'over' : ''}">のこり ${yen(rest)}</span></div>
+        </div>`;
+      });
+      const none = exps.filter(e => !findBudget(m, e.budgetId));
+      if (none.length) {
+        rows.push(`<div class="hb" data-m="${m}" data-b="__none"><div class="hb-top"><span class="hb-name"><i style="background:var(--muted)"></i>予算なし</span>
+          <span class="hb-p">${yen(none.reduce((s, e) => s + e.amount, 0))}</span></div></div>`);
+      }
+      return `<div class="hist-month">
+        <div class="hist-head" data-m="${m}"><span>${monthLabel(m)}</span><small>この月をひらく ›</small></div>
+        ${rows.join('')}</div>`;
     }).join('');
-    $('historyList').querySelectorAll('.hist-row').forEach(el => el.onclick = () => { currentMonth = el.dataset.m; switchTab('home'); });
+    $('historyList').querySelectorAll('.hist-head').forEach(el => el.onclick = () => { currentMonth = el.dataset.m; switchTab('home'); });
     $('historyList').querySelectorAll('.hb').forEach(el => el.onclick = ev => {
       ev.stopPropagation(); currentMonth = el.dataset.m; budgetFilter = el.dataset.b; tagFilter = null; switchTab('records');
     });
