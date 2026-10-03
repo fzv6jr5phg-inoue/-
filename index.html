@@ -1,0 +1,661 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#fbe3f4">
+<title>おこづかい手帖</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg1: #fde7f3;
+    --bg2: #e9e4ff;
+    --bg3: #dff6f4;
+    --card: rgba(255, 255, 255, 0.78);
+    --card-solid: #fffafd;
+    --line: #f3d3e8;
+    --text: #6b4a76;
+    --muted: #a88bb2;
+    --pink: #ff8fc7;
+    --pink-deep: #f06aa9;
+    --lav: #b9a3ff;
+    --mint: #8fe0d2;
+    --sky: #9fd3ff;
+    --lemon: #ffe48f;
+    --danger: #ff6f91;
+    --shadow: 0 8px 24px rgba(214, 140, 196, 0.22);
+    --radius: 22px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg1: #2a2140; --bg2: #3a2347; --bg3: #1f2d3f;
+      --card: rgba(52, 38, 72, 0.82); --card-solid: #34264a; --line: #5a4373;
+      --text: #f6e6ff; --muted: #c6a9d6; --shadow: 0 8px 24px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg1: #2a2140; --bg2: #3a2347; --bg3: #1f2d3f;
+    --card: rgba(52, 38, 72, 0.82); --card-solid: #34264a; --line: #5a4373;
+    --text: #f6e6ff; --muted: #c6a9d6; --shadow: 0 8px 24px rgba(0,0,0,.35);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    font-family: "Zen Maru Gothic", "Hiragino Maru Gothic ProN", "Yu Gothic", sans-serif;
+    color: var(--text);
+    background: var(--bg1);
+    background-image:
+      radial-gradient(circle at 10% 10%, var(--bg2) 0, transparent 45%),
+      radial-gradient(circle at 90% 30%, var(--bg3) 0, transparent 45%),
+      radial-gradient(circle at 30% 90%, var(--bg2) 0, transparent 50%),
+      linear-gradient(160deg, var(--bg1), var(--bg2) 55%, var(--bg3));
+    background-attachment: fixed;
+    min-height: 100vh;
+    -webkit-tap-highlight-color: transparent;
+  }
+  body::before {
+    content: "";
+    position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background-image:
+      radial-gradient(2px 2px at 20% 30%, #fff 50%, transparent 51%),
+      radial-gradient(1.5px 1.5px at 70% 15%, #fff 50%, transparent 51%),
+      radial-gradient(2px 2px at 85% 70%, #fff 50%, transparent 51%),
+      radial-gradient(1.5px 1.5px at 40% 80%, #fff 50%, transparent 51%),
+      radial-gradient(1.5px 1.5px at 60% 50%, #fff 50%, transparent 51%);
+    opacity: .8;
+  }
+  .wrap { position: relative; z-index: 1; max-width: 560px; margin: 0 auto; padding: 16px 16px 120px; }
+
+  header.top { text-align: center; padding: 8px 0 4px; }
+  .logo { font-size: 1.5rem; font-weight: 700; letter-spacing: .06em;
+    background: linear-gradient(90deg, var(--pink), var(--lav), var(--mint));
+    -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .logo-sub { font-size: .75rem; color: var(--muted); }
+
+  .month-nav { display: flex; align-items: center; justify-content: center; gap: 12px; margin: 12px 0; }
+  .month-nav .label { font-size: 1.15rem; font-weight: 700; min-width: 9em; text-align: center; }
+  .icon-btn { border: none; background: var(--card); color: var(--text); width: 38px; height: 38px;
+    border-radius: 50%; font-size: 1.05rem; cursor: pointer; box-shadow: var(--shadow); font-family: inherit; }
+
+  .card { background: var(--card); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    border: 2px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px; margin-bottom: 14px; }
+
+  .summary { display: flex; align-items: center; gap: 16px; }
+  .summary .nums { flex: 1; min-width: 0; }
+  .summary .big { font-size: 1.7rem; font-weight: 700; }
+  .summary .small { font-size: .82rem; color: var(--muted); }
+
+  .ring { --p: 50; --c: var(--pink); width: 92px; height: 92px; border-radius: 50%; flex-shrink: 0;
+    background: conic-gradient(var(--c) calc(var(--p) * 1%), rgba(200,170,210,.25) 0);
+    display: grid; place-items: center; position: relative; }
+  .ring::after { content: ""; position: absolute; inset: 10px; border-radius: 50%; background: var(--card-solid); }
+  .ring span { position: relative; z-index: 1; font-weight: 700; font-size: 1.05rem; }
+  .ring.sm { width: 70px; height: 70px; }
+  .ring.sm::after { inset: 8px; }
+  .ring.sm span { font-size: .9rem; }
+
+  .section-title { display: flex; justify-content: space-between; align-items: center; margin: 18px 4px 10px; font-weight: 700; }
+  .section-title small { font-weight: 500; color: var(--muted); }
+
+  .budget { display: flex; gap: 14px; align-items: center; cursor: pointer; }
+  .budget .info { flex: 1; min-width: 0; }
+  .budget .name { font-weight: 700; font-size: 1.05rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .budget .rest { font-size: 1.25rem; font-weight: 700; margin-top: 2px; }
+  .budget .detail { font-size: .78rem; color: var(--muted); }
+  .bar { height: 10px; border-radius: 99px; background: rgba(200,170,210,.25); overflow: hidden; margin-top: 8px; }
+  .bar > div { height: 100%; border-radius: 99px; }
+  .over { color: var(--danger); }
+
+  .btn { border: none; border-radius: 99px; padding: 10px 18px; font-family: inherit; font-weight: 700; font-size: .95rem;
+    cursor: pointer; color: #fff; background: linear-gradient(90deg, var(--pink), var(--lav)); box-shadow: var(--shadow); }
+  .btn.ghost { background: var(--card); color: var(--text); border: 2px solid var(--line); box-shadow: none; }
+  .btn.danger { background: var(--danger); }
+  .btn.block { width: 100%; }
+  .btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .btn-row .btn { flex: 1; }
+
+  .empty { text-align: center; color: var(--muted); padding: 20px 8px; line-height: 1.8; }
+
+  .expense { display: flex; gap: 12px; align-items: center; padding: 12px 4px; border-bottom: 1.5px dashed var(--line); cursor: pointer; }
+  .expense:last-child { border-bottom: none; }
+  .expense .dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+  .expense .main { flex: 1; min-width: 0; }
+  .expense .memo { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .expense .meta { font-size: .75rem; color: var(--muted); }
+  .expense .amt { font-weight: 700; white-space: nowrap; }
+  .day-head { font-size: .8rem; color: var(--muted); margin: 10px 4px 0; font-weight: 700; }
+
+  .tag { display: inline-block; font-size: .72rem; padding: 2px 9px; border-radius: 99px; margin: 3px 4px 0 0;
+    background: rgba(185, 163, 255, .25); color: var(--text); border: 1px solid rgba(185,163,255,.5); }
+  .tag.on { background: linear-gradient(90deg, var(--pink), var(--lav)); color: #fff; border-color: transparent; }
+  .tag-filter { display: flex; flex-wrap: wrap; gap: 2px; margin-bottom: 6px; }
+  .tag-filter .tag { cursor: pointer; font-size: .8rem; padding: 4px 12px; }
+
+  .tag-stats .row { display: flex; justify-content: space-between; font-size: .88rem; padding: 4px 0; }
+
+  nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: flex; justify-content: center;
+    padding: 8px 16px calc(8px + env(safe-area-inset-bottom)); }
+  nav.tabs .inner { display: flex; gap: 4px; background: var(--card-solid); border: 2px solid var(--line);
+    border-radius: 99px; padding: 5px; box-shadow: var(--shadow); width: 100%; max-width: 420px; }
+  nav.tabs button { flex: 1; border: none; background: none; font-family: inherit; color: var(--muted); font-weight: 700;
+    padding: 9px 4px; border-radius: 99px; cursor: pointer; font-size: .85rem; }
+  nav.tabs button.active { background: linear-gradient(90deg, var(--pink), var(--lav)); color: #fff; }
+
+  .fab { position: fixed; right: max(16px, calc(50% - 264px)); bottom: calc(84px + env(safe-area-inset-bottom)); z-index: 11;
+    width: 60px; height: 60px; border-radius: 50%; border: 3px solid #fff; font-size: 1.9rem; color: #fff; cursor: pointer;
+    background: linear-gradient(135deg, var(--pink), var(--lav)); box-shadow: 0 10px 24px rgba(240,106,169,.45); font-family: inherit; }
+
+  .modal-bg { position: fixed; inset: 0; z-index: 20; background: rgba(120, 80, 140, .35); display: none;
+    align-items: flex-end; justify-content: center; }
+  .modal-bg.show { display: flex; }
+  .modal { background: var(--card-solid); width: 100%; max-width: 560px; max-height: 92vh; overflow-y: auto;
+    border-radius: 28px 28px 0 0; padding: 20px 16px calc(20px + env(safe-area-inset-bottom)); border-top: 3px solid var(--line);
+    animation: up .22s ease-out; }
+  @keyframes up { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
+  .modal h2 { margin: 0 0 14px; font-size: 1.15rem; text-align: center; }
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: .8rem; font-weight: 700; margin-bottom: 5px; color: var(--muted); }
+  .field input, .field select { width: 100%; padding: 11px 14px; border-radius: 14px; border: 2px solid var(--line);
+    background: var(--card); color: var(--text); font-family: inherit; font-size: 1rem; outline: none; }
+  .field input:focus, .field select:focus { border-color: var(--pink); }
+  .tag-input-box { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; padding: 8px 10px; border-radius: 14px;
+    border: 2px solid var(--line); background: var(--card); }
+  .tag-input-box input { flex: 1; min-width: 6em; border: none; padding: 4px; background: transparent; outline: none; }
+  .tag-input-box .tag { cursor: pointer; font-size: .8rem; }
+  .suggest { margin-top: 6px; }
+  .suggest .tag { cursor: pointer; opacity: .8; }
+  .colors { display: flex; gap: 8px; flex-wrap: wrap; }
+  .colors button { width: 34px; height: 34px; border-radius: 50%; border: 3px solid transparent; cursor: pointer; }
+  .colors button.on { border-color: var(--text); }
+
+  .hist-row { display: flex; align-items: center; gap: 12px; padding: 10px 2px; border-bottom: 1.5px dashed var(--line); cursor: pointer; }
+  .hist-row:last-child { border-bottom: none; }
+  .hist-row .m { font-weight: 700; width: 6.5em; flex-shrink: 0; }
+  .hist-row .b { flex: 1; }
+
+  .toast { position: fixed; left: 50%; top: 18px; transform: translateX(-50%); z-index: 30; background: var(--card-solid);
+    border: 2px solid var(--line); border-radius: 99px; padding: 8px 18px; box-shadow: var(--shadow); font-weight: 700;
+    opacity: 0; transition: opacity .25s; pointer-events: none; }
+  .toast.show { opacity: 1; }
+  .note { font-size: .8rem; color: var(--muted); line-height: 1.7; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="logo">✧ おこづかい手帖 ✧</div>
+    <div class="logo-sub">ゆめかわ家計簿 ♡</div>
+  </header>
+
+  <div class="month-nav">
+    <button class="icon-btn" id="prevMonth" aria-label="前の月">‹</button>
+    <div class="label" id="monthLabel"></div>
+    <button class="icon-btn" id="nextMonth" aria-label="次の月">›</button>
+  </div>
+
+  <!-- ホーム -->
+  <section id="tab-home">
+    <div class="card summary" id="summaryCard"></div>
+    <div class="section-title"><span>🎀 予算</span><button class="btn ghost" id="addBudgetBtn" style="padding:6px 14px;font-size:.85rem">＋ 予算</button></div>
+    <div id="budgetList"></div>
+  </section>
+
+  <!-- 記録 -->
+  <section id="tab-records" hidden>
+    <div class="card">
+      <div class="tag-filter" id="tagFilter"></div>
+      <div id="expenseList"></div>
+    </div>
+    <div class="section-title"><span>🏷️ タグ別</span><small>この月</small></div>
+    <div class="card tag-stats" id="tagStats"></div>
+  </section>
+
+  <!-- これまで -->
+  <section id="tab-history" hidden>
+    <div class="section-title"><span>📖 これまでの記録</span><small>タップでその月へ</small></div>
+    <div class="card" id="historyList"></div>
+    <div class="section-title"><span>💾 バックアップ</span></div>
+    <div class="card">
+      <p class="note">データはこの端末のブラウザに保存されます。ブラウザのデータ削除や機種変更に備えて、ときどき書き出しておくと安心です。</p>
+      <div class="btn-row">
+        <button class="btn" id="exportBtn">書き出す</button>
+        <button class="btn ghost" id="importBtn">読み込む</button>
+      </div>
+      <input type="file" id="importFile" accept="application/json,.json" hidden>
+    </div>
+  </section>
+</div>
+
+<button class="fab" id="fab" aria-label="支出を追加">＋</button>
+
+<nav class="tabs"><div class="inner">
+  <button data-tab="home" class="active">🏠 ホーム</button>
+  <button data-tab="records">🧾 支出</button>
+  <button data-tab="history">📖 これまで</button>
+</div></nav>
+
+<!-- 支出モーダル -->
+<div class="modal-bg" id="expenseModal">
+  <div class="modal">
+    <h2 id="expenseTitle">支出をきろく ♡</h2>
+    <div class="field"><label>金額（円）</label><input type="number" inputmode="numeric" min="0" id="exAmount" placeholder="500"></div>
+    <div class="field"><label>メモ</label><input type="text" id="exMemo" placeholder="カフェラテ"></div>
+    <div class="field"><label>日付</label><input type="date" id="exDate"></div>
+    <div class="field"><label>予算</label><select id="exBudget"></select></div>
+    <div class="field">
+      <label>タグ（Enterで追加・タップで外す）</label>
+      <div class="tag-input-box" id="exTagBox"><input type="text" id="exTagInput" placeholder="#推し活"></div>
+      <div class="suggest" id="exTagSuggest"></div>
+    </div>
+    <div class="btn-row" style="margin-top:6px">
+      <button class="btn danger" id="exDelete" hidden>削除</button>
+      <button class="btn ghost" data-close>やめる</button>
+      <button class="btn" id="exSave">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 予算モーダル -->
+<div class="modal-bg" id="budgetModal">
+  <div class="modal">
+    <h2 id="budgetTitle">予算をつくる ✧</h2>
+    <div class="field"><label>名前</label><input type="text" id="bdName" placeholder="推し活"></div>
+    <div class="field"><label>金額（円）</label><input type="number" inputmode="numeric" min="0" id="bdAmount" placeholder="10000"></div>
+    <div class="field"><label>色</label><div class="colors" id="bdColors"></div></div>
+    <p class="note" id="bdNote" hidden></p>
+    <div class="btn-row" style="margin-top:6px">
+      <button class="btn danger" id="bdDelete" hidden>削除</button>
+      <button class="btn ghost" data-close>やめる</button>
+      <button class="btn" id="bdSave">保存</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+  const STORE_KEY = 'okozukai-techo-v1';
+  const COLORS = ['#ff8fc7', '#b9a3ff', '#8fe0d2', '#9fd3ff', '#ffc38f', '#ffe48f', '#c3e88f', '#f7a8d8'];
+
+  // ---------- データ ----------
+  // months: { 'YYYY-MM': { budgets: [{id, name, amount, color}] } }
+  // expenses: [{id, date:'YYYY-MM-DD', amount, memo, budgetId, tags:[]}]
+  let data = load();
+
+  function load() {
+    try {
+      const raw = localStorage.getItem(STORE_KEY);
+      if (raw) {
+        const d = JSON.parse(raw);
+        if (d && d.months && Array.isArray(d.expenses)) return d;
+      }
+    } catch (e) { /* 読めない場合は新規 */ }
+    return { months: {}, expenses: [] };
+  }
+  function save() {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(data)); }
+    catch (e) { toast('保存できませんでした…'); }
+  }
+
+  const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  const pad = n => String(n).padStart(2, '0');
+  const today = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
+  const yen = n => (n < 0 ? '-' : '') + '¥' + Math.abs(Math.round(n)).toLocaleString('ja-JP');
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const monthOf = date => date.slice(0, 7);
+  const monthLabel = m => { const [y, mo] = m.split('-'); return `${y}年 ${Number(mo)}月`; };
+  const shiftMonth = (m, delta) => { const [y, mo] = m.split('-').map(Number); const d = new Date(y, mo - 1 + delta, 1); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}`; };
+
+  let currentMonth = monthOf(today());
+  let currentTab = 'home';
+  let tagFilter = null;
+
+  const budgetsOf = m => (data.months[m] && data.months[m].budgets) || [];
+  const expensesOf = m => data.expenses.filter(e => monthOf(e.date) === m);
+  const findBudget = (m, id) => budgetsOf(m).find(b => b.id === id);
+  const allTags = () => {
+    const count = {};
+    data.expenses.forEach(e => (e.tags || []).forEach(t => { count[t] = (count[t] || 0) + 1; }));
+    return Object.keys(count).sort((a, b) => count[b] - count[a]);
+  };
+  const ensureMonth = m => { if (!data.months[m]) data.months[m] = { budgets: [] }; return data.months[m]; };
+
+  // ---------- 表示 ----------
+  const $ = id => document.getElementById(id);
+
+  function ratioColor(rest, amount) {
+    if (amount <= 0) return 'var(--muted)';
+    const r = rest / amount;
+    if (r < 0) return 'var(--danger)';
+    if (r < 0.2) return '#ffb38f';
+    return null;
+  }
+
+  function renderSummary() {
+    const budgets = budgetsOf(currentMonth);
+    const exps = expensesOf(currentMonth);
+    const total = budgets.reduce((s, b) => s + b.amount, 0);
+    const spent = exps.reduce((s, e) => s + e.amount, 0);
+    const rest = total - spent;
+    const p = total > 0 ? Math.round(rest / total * 100) : 0;
+    const c = ratioColor(rest, total) || 'var(--pink)';
+    $('summaryCard').innerHTML = `
+      <div class="ring" style="--p:${Math.max(0, Math.min(100, p))};--c:${c}"><span class="${rest < 0 ? 'over' : ''}">${total > 0 ? p + '%' : '—'}</span></div>
+      <div class="nums">
+        <div class="small">今月のこり</div>
+        <div class="big ${rest < 0 ? 'over' : ''}">${yen(rest)}</div>
+        <div class="small">予算 ${yen(total)} ／ つかった ${yen(spent)}</div>
+      </div>`;
+  }
+
+  function renderBudgets() {
+    const budgets = budgetsOf(currentMonth);
+    const exps = expensesOf(currentMonth);
+    const list = $('budgetList');
+    if (!budgets.length) {
+      const prev = findPrevMonthWithBudgets(currentMonth);
+      list.innerHTML = `<div class="card empty">まだ予算がありません 🌙<br>
+        ${prev ? `<button class="btn" id="copyPrevBtn" style="margin-top:10px">${monthLabel(prev)}の予算をコピー</button><br>` : ''}
+        <button class="btn ${prev ? 'ghost' : ''}" id="newBudgetEmpty" style="margin-top:10px">＋ 予算をつくる</button></div>`;
+      if (prev) $('copyPrevBtn').onclick = () => copyBudgets(prev, currentMonth);
+      $('newBudgetEmpty').onclick = () => openBudget();
+      return;
+    }
+    list.innerHTML = budgets.map(b => {
+      const spent = exps.filter(e => e.budgetId === b.id).reduce((s, e) => s + e.amount, 0);
+      const rest = b.amount - spent;
+      const p = b.amount > 0 ? Math.round(rest / b.amount * 100) : 0;
+      const c = ratioColor(rest, b.amount) || b.color;
+      return `<div class="card budget" data-id="${b.id}">
+        <div class="ring sm" style="--p:${Math.max(0, Math.min(100, p))};--c:${c}"><span class="${rest < 0 ? 'over' : ''}">${b.amount > 0 ? p + '%' : '—'}</span></div>
+        <div class="info">
+          <div class="name">${esc(b.name)}</div>
+          <div class="rest ${rest < 0 ? 'over' : ''}">のこり ${yen(rest)}</div>
+          <div class="detail">${yen(spent)} ／ ${yen(b.amount)}${rest < 0 ? '　オーバー！' : ''}</div>
+          <div class="bar"><div style="width:${Math.max(0, Math.min(100, p))}%;background:${c}"></div></div>
+        </div></div>`;
+    }).join('');
+    list.querySelectorAll('.budget').forEach(el => el.onclick = () => openBudget(el.dataset.id));
+
+    const orphan = exps.filter(e => !findBudget(currentMonth, e.budgetId));
+    if (orphan.length) {
+      list.insertAdjacentHTML('beforeend', `<div class="card note">予算に紐づいていない支出が ${orphan.length} 件（${yen(orphan.reduce((s, e) => s + e.amount, 0))}）あります。支出タブから予算を付け直せます。</div>`);
+    }
+  }
+
+  function findPrevMonthWithBudgets(m) {
+    const keys = Object.keys(data.months).filter(k => k < m && budgetsOf(k).length).sort();
+    return keys.length ? keys[keys.length - 1] : null;
+  }
+
+  function copyBudgets(from, to) {
+    // 同じ id を引き継ぐことで「同じ予算」として月をまたいで扱える
+    ensureMonth(to).budgets = budgetsOf(from).map(b => ({ ...b }));
+    save(); render(); toast('コピーしました ✧');
+  }
+
+  function expenseRow(e) {
+    const b = findBudget(monthOf(e.date), e.budgetId);
+    return `<div class="expense" data-id="${e.id}">
+      <div class="dot" style="background:${b ? b.color : 'var(--muted)'}"></div>
+      <div class="main">
+        <div class="memo">${esc(e.memo || '（メモなし）')}</div>
+        <div class="meta">${b ? esc(b.name) : '予算なし'}</div>
+        <div>${(e.tags || []).map(t => `<span class="tag">#${esc(t)}</span>`).join('')}</div>
+      </div>
+      <div class="amt">${yen(e.amount)}</div></div>`;
+  }
+
+  function renderRecords() {
+    const exps = expensesOf(currentMonth);
+    const tagsHere = [...new Set(exps.flatMap(e => e.tags || []))];
+    if (tagFilter && !tagsHere.includes(tagFilter)) tagFilter = null;
+    $('tagFilter').innerHTML = tagsHere.length
+      ? `<span class="tag ${tagFilter ? '' : 'on'}" data-tag="">すべて</span>` +
+        tagsHere.map(t => `<span class="tag ${t === tagFilter ? 'on' : ''}" data-tag="${esc(t)}">#${esc(t)}</span>`).join('')
+      : '';
+    $('tagFilter').querySelectorAll('.tag').forEach(el => el.onclick = () => { tagFilter = el.dataset.tag || null; renderRecords(); });
+
+    const shown = exps.filter(e => !tagFilter || (e.tags || []).includes(tagFilter))
+      .sort((a, b) => b.date.localeCompare(a.date) || (b.createdAt || 0) - (a.createdAt || 0));
+    if (!shown.length) {
+      $('expenseList').innerHTML = `<div class="empty">この月の支出はまだありません ☁️<br>右下の ＋ からきろくできます</div>`;
+    } else {
+      let html = '', lastDay = '';
+      shown.forEach(e => {
+        if (e.date !== lastDay) {
+          const d = new Date(e.date + 'T00:00:00');
+          html += `<div class="day-head">${d.getMonth() + 1}/${d.getDate()}（${'日月火水木金土'[d.getDay()]}）</div>`;
+          lastDay = e.date;
+        }
+        html += expenseRow(e);
+      });
+      if (tagFilter) html += `<div class="day-head" style="text-align:right">#${esc(tagFilter)} 合計 ${yen(shown.reduce((s, e) => s + e.amount, 0))}</div>`;
+      $('expenseList').innerHTML = html;
+      $('expenseList').querySelectorAll('.expense').forEach(el => el.onclick = () => openExpense(el.dataset.id));
+    }
+
+    const stat = {};
+    exps.forEach(e => {
+      const ts = (e.tags && e.tags.length) ? e.tags : ['（タグなし）'];
+      ts.forEach(t => { stat[t] = (stat[t] || 0) + e.amount; });
+    });
+    const keys = Object.keys(stat).sort((a, b) => stat[b] - stat[a]);
+    $('tagStats').innerHTML = keys.length
+      ? keys.map(k => `<div class="row"><span>${k === '（タグなし）' ? k : '#' + esc(k)}</span><b>${yen(stat[k])}</b></div>`).join('') +
+        `<p class="note" style="margin:8px 0 0">※ タグが複数ついた支出はそれぞれのタグに数えています</p>`
+      : `<div class="empty">まだありません</div>`;
+  }
+
+  function renderHistory() {
+    const months = new Set([...Object.keys(data.months).filter(m => budgetsOf(m).length), ...data.expenses.map(e => monthOf(e.date))]);
+    const sorted = [...months].sort().reverse();
+    if (!sorted.length) { $('historyList').innerHTML = `<div class="empty">まだ記録がありません ✧</div>`; return; }
+    $('historyList').innerHTML = sorted.map(m => {
+      const total = budgetsOf(m).reduce((s, b) => s + b.amount, 0);
+      const spent = expensesOf(m).reduce((s, e) => s + e.amount, 0);
+      const rest = total - spent;
+      const p = total > 0 ? Math.round(rest / total * 100) : 0;
+      const c = ratioColor(rest, total) || 'var(--lav)';
+      return `<div class="hist-row" data-m="${m}">
+        <div class="m">${monthLabel(m)}</div>
+        <div class="b">
+          <div class="note" style="margin:0">つかった ${yen(spent)} ／ 予算 ${yen(total)}</div>
+          <div class="bar"><div style="width:${Math.max(0, Math.min(100, p))}%;background:${c}"></div></div>
+        </div>
+        <div class="${rest < 0 ? 'over' : ''}" style="font-weight:700;white-space:nowrap">${total > 0 ? p + '%' : '—'}</div></div>`;
+    }).join('');
+    $('historyList').querySelectorAll('.hist-row').forEach(el => el.onclick = () => { currentMonth = el.dataset.m; switchTab('home'); });
+  }
+
+  function render() {
+    $('monthLabel').textContent = monthLabel(currentMonth);
+    renderSummary();
+    renderBudgets();
+    renderRecords();
+    renderHistory();
+  }
+
+  function switchTab(t) {
+    currentTab = t;
+    ['home', 'records', 'history'].forEach(k => { $('tab-' + k).hidden = k !== t; });
+    document.querySelectorAll('nav.tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === t));
+    render();
+    window.scrollTo({ top: 0 });
+  }
+
+  // ---------- モーダル共通 ----------
+  function openModal(id) { $(id).classList.add('show'); }
+  function closeModal(id) { $(id).classList.remove('show'); }
+  document.querySelectorAll('.modal-bg').forEach(bg => {
+    bg.addEventListener('click', ev => { if (ev.target === bg || ev.target.hasAttribute('data-close')) closeModal(bg.id); });
+  });
+
+  let toastTimer;
+  function toast(msg) {
+    const t = $('toast'); t.textContent = msg; t.classList.add('show');
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 1600);
+  }
+
+  // ---------- 支出 ----------
+  let editingExpense = null;
+  let exTags = [];
+
+  function fillBudgetSelect(m, selectedId) {
+    const budgets = budgetsOf(m);
+    const sel = $('exBudget');
+    sel.innerHTML = budgets.map(b => `<option value="${b.id}">${esc(b.name)}</option>`).join('') +
+      `<option value="">（予算なし）</option>`;
+    sel.value = budgets.some(b => b.id === selectedId) ? selectedId : (budgets[0] ? budgets[0].id : '');
+  }
+
+  function renderExTags() {
+    const box = $('exTagBox');
+    box.querySelectorAll('.tag').forEach(t => t.remove());
+    const input = $('exTagInput');
+    exTags.forEach((t, i) => {
+      const span = document.createElement('span');
+      span.className = 'tag on'; span.textContent = '#' + t + ' ×';
+      span.onclick = () => { exTags.splice(i, 1); renderExTags(); };
+      box.insertBefore(span, input);
+    });
+    const sugg = allTags().filter(t => !exTags.includes(t)).slice(0, 12);
+    $('exTagSuggest').innerHTML = sugg.map(t => `<span class="tag" data-t="${esc(t)}">#${esc(t)}</span>`).join('');
+    $('exTagSuggest').querySelectorAll('.tag').forEach(el => el.onclick = () => { exTags.push(el.dataset.t); renderExTags(); });
+  }
+
+  function addTagFromInput() {
+    const input = $('exTagInput');
+    input.value.split(/[,、\s]+/).map(s => s.replace(/^#+/, '').trim()).filter(Boolean)
+      .forEach(t => { if (!exTags.includes(t)) exTags.push(t); });
+    input.value = '';
+    renderExTags();
+  }
+  $('exTagInput').addEventListener('keydown', ev => {
+    if (ev.key === 'Enter' && !ev.isComposing) { ev.preventDefault(); addTagFromInput(); }
+  });
+  $('exTagInput').addEventListener('blur', () => { if ($('exTagInput').value.trim()) addTagFromInput(); });
+
+  function openExpense(id) {
+    editingExpense = id ? data.expenses.find(e => e.id === id) : null;
+    const e = editingExpense;
+    $('expenseTitle').textContent = e ? '支出をなおす ✎' : '支出をきろく ♡';
+    $('exAmount').value = e ? e.amount : '';
+    $('exMemo').value = e ? e.memo : '';
+    const defDate = monthOf(today()) === currentMonth ? today() : currentMonth + '-01';
+    $('exDate').value = e ? e.date : defDate;
+    fillBudgetSelect(monthOf($('exDate').value), e ? e.budgetId : null);
+    exTags = e ? [...(e.tags || [])] : [];
+    $('exTagInput').value = '';
+    renderExTags();
+    $('exDelete').hidden = !e;
+    openModal('expenseModal');
+    if (!e) setTimeout(() => $('exAmount').focus(), 50);
+  }
+
+  $('exDate').addEventListener('change', () => {
+    if (!$('exDate').value) return;
+    fillBudgetSelect(monthOf($('exDate').value), $('exBudget').value);
+  });
+
+  $('exSave').onclick = () => {
+    if ($('exTagInput').value.trim()) addTagFromInput();
+    const amount = Number($('exAmount').value);
+    const date = $('exDate').value;
+    if (!amount || amount < 0) return toast('金額を入れてね');
+    if (!date) return toast('日付を入れてね');
+    const rec = { amount: Math.round(amount), memo: $('exMemo').value.trim(), date, budgetId: $('exBudget').value || null, tags: [...exTags] };
+    if (editingExpense) Object.assign(editingExpense, rec, { updatedAt: Date.now() });
+    else data.expenses.push({ id: uid(), createdAt: Date.now(), ...rec });
+    save();
+    currentMonth = monthOf(date);
+    closeModal('expenseModal');
+    render();
+    toast(editingExpense ? 'なおしました ✧' : 'きろくしました ♡');
+  };
+
+  $('exDelete').onclick = () => {
+    if (!editingExpense || !confirm('この支出を削除しますか？')) return;
+    data.expenses = data.expenses.filter(e => e !== editingExpense);
+    save(); closeModal('expenseModal'); render(); toast('削除しました');
+  };
+
+  // ---------- 予算 ----------
+  let editingBudget = null;
+  let bdColor = COLORS[0];
+
+  function renderColors() {
+    $('bdColors').innerHTML = COLORS.map(c => `<button type="button" style="background:${c}" class="${c === bdColor ? 'on' : ''}" data-c="${c}" aria-label="色"></button>`).join('');
+    $('bdColors').querySelectorAll('button').forEach(b => b.onclick = () => { bdColor = b.dataset.c; renderColors(); });
+  }
+
+  function openBudget(id) {
+    editingBudget = id ? findBudget(currentMonth, id) : null;
+    const b = editingBudget;
+    $('budgetTitle').textContent = b ? `予算をなおす（${monthLabel(currentMonth)}）` : `予算をつくる（${monthLabel(currentMonth)}）`;
+    $('bdName').value = b ? b.name : '';
+    $('bdAmount').value = b ? b.amount : '';
+    bdColor = b ? b.color : COLORS[budgetsOf(currentMonth).length % COLORS.length];
+    renderColors();
+    const used = b ? expensesOf(currentMonth).filter(e => e.budgetId === b.id).length : 0;
+    $('bdNote').hidden = !used;
+    $('bdNote').textContent = used ? `この予算には今月 ${used} 件の支出があります。削除すると支出は「予算なし」になります。` : '';
+    $('bdDelete').hidden = !b;
+    openModal('budgetModal');
+  }
+
+  $('bdSave').onclick = () => {
+    const name = $('bdName').value.trim();
+    const amount = Number($('bdAmount').value);
+    if (!name) return toast('名前を入れてね');
+    if (!(amount >= 0) || $('bdAmount').value === '') return toast('金額を入れてね');
+    if (editingBudget) Object.assign(editingBudget, { name, amount: Math.round(amount), color: bdColor });
+    else ensureMonth(currentMonth).budgets.push({ id: uid(), name, amount: Math.round(amount), color: bdColor });
+    save(); closeModal('budgetModal'); render();
+    toast(editingBudget ? 'なおしました ✧' : 'つくりました ✧');
+  };
+
+  $('bdDelete').onclick = () => {
+    if (!editingBudget || !confirm(`「${editingBudget.name}」を${monthLabel(currentMonth)}から削除しますか？`)) return;
+    const m = ensureMonth(currentMonth);
+    m.budgets = m.budgets.filter(b => b !== editingBudget);
+    save(); closeModal('budgetModal'); render(); toast('削除しました');
+  };
+
+  // ---------- バックアップ ----------
+  $('exportBtn').onclick = () => {
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `okozukai-${today()}.json`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  };
+  $('importBtn').onclick = () => $('importFile').click();
+  $('importFile').onchange = async ev => {
+    const f = ev.target.files[0]; ev.target.value = '';
+    if (!f) return;
+    try {
+      const d = JSON.parse(await f.text());
+      if (!d || !d.months || !Array.isArray(d.expenses)) throw new Error('bad');
+      if (!confirm('いまのデータを読み込んだデータで置きかえます。よろしいですか？')) return;
+      data = d; save(); render(); toast('読み込みました ✧');
+    } catch (e) { toast('読み込めないファイルでした'); }
+  };
+
+  // ---------- その他 ----------
+  $('prevMonth').onclick = () => { currentMonth = shiftMonth(currentMonth, -1); tagFilter = null; render(); };
+  $('nextMonth').onclick = () => { currentMonth = shiftMonth(currentMonth, 1); tagFilter = null; render(); };
+  $('addBudgetBtn').onclick = () => openBudget();
+  $('fab').onclick = () => openExpense();
+  document.querySelectorAll('nav.tabs button').forEach(b => b.onclick = () => switchTab(b.dataset.tab));
+
+  render();
+})();
+</script>
+</body>
+</html>
