@@ -101,6 +101,12 @@
   .budget .head .name { flex: 1; }
   .edit-btn { border: 2px solid var(--line); background: var(--card); color: var(--text); border-radius: 99px;
     padding: 2px 10px; font-family: inherit; font-size: .75rem; font-weight: 700; cursor: pointer; flex-shrink: 0; }
+  .span-badge { display: inline-block; font-size: .7rem; font-weight: 700; padding: 1px 9px; border-radius: 99px; margin-top: 3px;
+    background: rgba(159, 211, 255, .3); border: 1px solid rgba(159, 211, 255, .7); }
+  .seg { display: flex; gap: 6px; }
+  .seg button { flex: 1; border: 2px solid var(--line); background: var(--card); color: var(--text); border-radius: 14px;
+    padding: 10px 6px; font-family: inherit; font-weight: 700; font-size: .85rem; cursor: pointer; }
+  .seg button.on { background: linear-gradient(90deg, var(--pink), var(--lav)); color: #fff; border-color: transparent; }
   .budget .see { font-size: .72rem; color: var(--muted); margin-top: 6px; text-align: right; }
   .budget .name { font-weight: 700; font-size: 1.05rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .budget .rest { font-size: 1.25rem; font-weight: 700; margin-top: 2px; }
@@ -181,7 +187,8 @@
 
   .hist-month { padding: 4px 0 12px; border-bottom: 1.5px dashed var(--line); margin-bottom: 10px; }
   .hist-month:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
-  .hist-head { display: flex; justify-content: space-between; align-items: baseline; font-weight: 700; font-size: 1.05rem; cursor: pointer; margin-bottom: 4px; }
+  .hist-head { display: flex; justify-content: space-between; align-items: baseline; font-weight: 700; font-size: 1.05rem; margin-bottom: 4px; }
+  .hist-head[data-m] { cursor: pointer; }
   .hist-head small { font-size: .72rem; color: var(--muted); font-weight: 500; }
   .hb { padding: 8px 4px; cursor: pointer; border-radius: 12px; }
   .hb-top { display: flex; justify-content: space-between; gap: 8px; font-weight: 700; font-size: .92rem; }
@@ -285,6 +292,14 @@
     <div class="field"><label>名前</label><input type="text" id="bdName" placeholder="推し活"></div>
     <div class="field"><label>金額（円）</label><input type="number" inputmode="numeric" min="0" id="bdAmount" placeholder="10000"></div>
     <div class="field"><label>色</label><div class="colors" id="bdColors"></div></div>
+    <div class="field"><label>種類</label>
+      <div class="seg" id="bdKind"><button type="button" data-k="month">毎月リセット</button><button type="button" data-k="span">月をまたぐ（半期など）</button></div>
+    </div>
+    <div id="bdSpanFields" hidden>
+      <div class="field"><label>はじまりの月</label><input type="month" id="bdStart"></div>
+      <div class="field"><label>期間（か月）</label><input type="number" inputmode="numeric" min="1" max="60" id="bdMonths" value="6"></div>
+      <p class="note" id="bdSpanNote"></p>
+    </div>
     <p class="note" id="bdNote" hidden></p>
     <div class="btn-row" style="margin-top:6px">
       <button class="btn danger" id="bdDelete" hidden>削除</button>
@@ -303,8 +318,14 @@
 
   // ---------- データ ----------
   // months: { 'YYYY-MM': { budgets: [{id, name, amount, color}] } }
+  // spanBudgets: [{id, name, amount, color, span:true, start:'YYYY-MM', months}]  月をまたぐ予算（半期など）
   // expenses: [{id, date:'YYYY-MM-DD', amount, memo, budgetId, tags:[]}]
-  let data = load();
+  let data = normalize(load());
+
+  function normalize(d) {
+    if (!Array.isArray(d.spanBudgets)) d.spanBudgets = [];
+    return d;
+  }
 
   function load() {
     try {
@@ -335,9 +356,19 @@
   let tagFilter = null;
   let budgetFilter = null; // null=すべて, '__none'=予算なし, それ以外=予算id
 
-  const budgetsOf = m => (data.months[m] && data.months[m].budgets) || [];
+  const monthlyBudgetsOf = m => (data.months[m] && data.months[m].budgets) || [];
+  const spanEnd = b => shiftMonth(b.start, b.months - 1);
+  const inSpan = (b, m) => m >= b.start && m <= spanEnd(b);
+  const spanBudgetsOf = m => data.spanBudgets.filter(b => inSpan(b, m));
+  const spanLabel = b => `${monthLabel(b.start)}〜${monthLabel(spanEnd(b))}`;
+  const budgetsOf = m => [...monthlyBudgetsOf(m), ...spanBudgetsOf(m)];
   const expensesOf = m => data.expenses.filter(e => monthOf(e.date) === m);
   const findBudget = (m, id) => budgetsOf(m).find(b => b.id === id);
+  // 月をまたぐ予算は期間中の支出をすべて合計する
+  const budgetExpenses = (b, m) => b.span
+    ? data.expenses.filter(e => e.budgetId === b.id && inSpan(b, monthOf(e.date)))
+    : expensesOf(m).filter(e => e.budgetId === b.id);
+  const sum = list => list.reduce((s, e) => s + e.amount, 0);
   const allTags = () => {
     const count = {};
     data.expenses.forEach(e => (e.tags || []).forEach(t => { count[t] = (count[t] || 0) + 1; }));
@@ -357,20 +388,16 @@
   }
 
   function renderBudgets() {
-    const budgets = budgetsOf(currentMonth);
+    const monthly = monthlyBudgetsOf(currentMonth);
+    const budgets = [...monthly, ...spanBudgetsOf(currentMonth)];
     const exps = expensesOf(currentMonth);
     const list = $('budgetList');
-    if (!budgets.length) {
-      const prev = findPrevMonthWithBudgets(currentMonth);
-      list.innerHTML = `<div class="card empty">まだ予算がありません 🌙<br>
+    const prev = monthly.length ? null : findPrevMonthWithBudgets(currentMonth);
+    let html = monthly.length ? '' : `<div class="card empty">${budgets.length ? '毎月の予算がまだありません' : 'まだ予算がありません'} 🌙<br>
         ${prev ? `<button class="btn" id="copyPrevBtn" style="margin-top:10px">${monthLabel(prev)}の予算をコピー</button><br>` : ''}
         <button class="btn ${prev ? 'ghost' : ''}" id="newBudgetEmpty" style="margin-top:10px">＋ 予算をつくる</button></div>`;
-      if (prev) $('copyPrevBtn').onclick = () => copyBudgets(prev, currentMonth);
-      $('newBudgetEmpty').onclick = () => openBudget();
-      return;
-    }
-    list.innerHTML = budgets.map(b => {
-      const spent = exps.filter(e => e.budgetId === b.id).reduce((s, e) => s + e.amount, 0);
+    html += budgets.map(b => {
+      const spent = sum(budgetExpenses(b, currentMonth));
       const rest = b.amount - spent;
       const p = b.amount > 0 ? Math.round(rest / b.amount * 100) : 0;
       const c = ratioColor(rest, b.amount) || b.color;
@@ -378,12 +405,16 @@
         <div class="ring sm" style="--p:${Math.max(0, Math.min(100, p))};--c:${c}"><span class="${rest < 0 ? 'over' : ''}">${b.amount > 0 ? p + '%' : '—'}</span></div>
         <div class="info">
           <div class="head"><div class="name">${esc(b.name)}</div><button class="edit-btn" data-edit="${b.id}">✎ なおす</button></div>
+          ${b.span ? `<div class="span-badge">🌙 ${spanLabel(b)}</div>` : ''}
           <div class="rest ${rest < 0 ? 'over' : ''}">のこり ${yen(rest)}</div>
           <div class="detail">${yen(spent)} ／ ${yen(b.amount)}${rest < 0 ? '　オーバー！' : ''}</div>
           <div class="bar"><div style="width:${Math.max(0, Math.min(100, p))}%;background:${c}"></div></div>
           <div class="see">タップで支出を見る ›</div>
         </div></div>`;
     }).join('');
+    list.innerHTML = html;
+    if (prev) $('copyPrevBtn').onclick = () => copyBudgets(prev, currentMonth);
+    if (!monthly.length) $('newBudgetEmpty').onclick = () => openBudget();
     list.querySelectorAll('.budget').forEach(el => el.onclick = () => { budgetFilter = el.dataset.id; tagFilter = null; switchTab('records'); });
     list.querySelectorAll('[data-edit]').forEach(el => el.onclick = ev => { ev.stopPropagation(); openBudget(el.dataset.edit); });
 
@@ -394,13 +425,13 @@
   }
 
   function findPrevMonthWithBudgets(m) {
-    const keys = Object.keys(data.months).filter(k => k < m && budgetsOf(k).length).sort();
+    const keys = Object.keys(data.months).filter(k => k < m && monthlyBudgetsOf(k).length).sort();
     return keys.length ? keys[keys.length - 1] : null;
   }
 
   function copyBudgets(from, to) {
     // 同じ id を引き継ぐことで「同じ予算」として月をまたいで扱える
-    ensureMonth(to).budgets = budgetsOf(from).map(b => ({ ...b }));
+    ensureMonth(to).budgets = monthlyBudgetsOf(from).map(b => ({ ...b }));
     save(); render(); toast('コピーしました ✧');
   }
 
@@ -430,7 +461,7 @@
 
     const exps = !budgetFilter ? monthExps
       : budgetFilter === '__none' ? monthExps.filter(e => !findBudget(currentMonth, e.budgetId))
-      : monthExps.filter(e => e.budgetId === budgetFilter);
+      : budgetExpenses(fb, currentMonth);
 
     if (fb) {
       const spent = exps.reduce((s, e) => s + e.amount, 0);
@@ -440,13 +471,14 @@
       $('filterSummary').innerHTML = `<div class="filter-summary">
         <div class="ring sm" style="--p:${Math.max(0, Math.min(100, p))};--c:${c}"><span class="${rest < 0 ? 'over' : ''}">${fb.amount > 0 ? p + '%' : '—'}</span></div>
         <div class="nums"><div class="rest ${rest < 0 ? 'over' : ''}">のこり ${yen(rest)}</div>
-        <div class="detail">${esc(fb.name)}：${yen(spent)} ／ ${yen(fb.amount)}・${exps.length}件</div></div></div>`;
+        <div class="detail">${esc(fb.name)}：${yen(spent)} ／ ${yen(fb.amount)}・${exps.length}件</div>
+        ${fb.span ? `<div class="span-badge">🌙 ${spanLabel(fb)} の合計</div>` : ''}</div></div>`;
     } else if (budgetFilter === '__none') {
       $('filterSummary').innerHTML = `<div class="filter-summary"><div class="nums note">予算なし：${yen(exps.reduce((s, e) => s + e.amount, 0))}・${exps.length}件</div></div>`;
     } else {
       $('filterSummary').innerHTML = '';
     }
-    $('tagStatsScope').textContent = fb ? `この月・${fb.name}` : budgetFilter === '__none' ? 'この月・予算なし' : 'この月';
+    $('tagStatsScope').textContent = fb ? `${fb.span ? '期間中' : 'この月'}・${fb.name}` : budgetFilter === '__none' ? 'この月・予算なし' : 'この月';
 
     const tagsHere = [...new Set(exps.flatMap(e => e.tags || []))];
     if (tagFilter && !tagsHere.includes(tagFilter)) tagFilter = null;
@@ -489,22 +521,34 @@
   }
 
   function renderHistory() {
-    const months = new Set([...Object.keys(data.months).filter(m => budgetsOf(m).length), ...data.expenses.map(e => monthOf(e.date))]);
+    const months = new Set([...Object.keys(data.months).filter(m => monthlyBudgetsOf(m).length), ...data.expenses.map(e => monthOf(e.date))]);
     const sorted = [...months].sort().reverse();
-    if (!sorted.length) { $('historyList').innerHTML = `<div class="empty">まだ記録がありません ✧</div>`; return; }
-    $('historyList').innerHTML = sorted.map(m => {
-      const exps = expensesOf(m);
-      const rows = budgetsOf(m).map(b => {
-        const spent = exps.filter(e => e.budgetId === b.id).reduce((s, e) => s + e.amount, 0);
-        const rest = b.amount - spent;
-        const p = b.amount > 0 ? Math.round(rest / b.amount * 100) : 0;
-        const c = ratioColor(rest, b.amount) || b.color;
-        return `<div class="hb" data-m="${m}" data-b="${b.id}">
+    if (!sorted.length && !data.spanBudgets.length) { $('historyList').innerHTML = `<div class="empty">まだ記録がありません ✧</div>`; return; }
+    const nowM = monthOf(today());
+    const histRow = (b, m, spent, sub) => {
+      const rest = b.amount - spent;
+      const p = b.amount > 0 ? Math.round(rest / b.amount * 100) : 0;
+      const c = ratioColor(rest, b.amount) || b.color;
+      return `<div class="hb" data-m="${m}" data-b="${b.id}">
           <div class="hb-top"><span class="hb-name"><i style="background:${b.color}"></i>${esc(b.name)}</span>
             <span class="hb-p ${rest < 0 ? 'over' : ''}">のこり ${b.amount > 0 ? p + '%' : '—'}</span></div>
+          ${sub || ''}
           <div class="bar"><div style="width:${Math.max(0, Math.min(100, p))}%;background:${c}"></div></div>
           <div class="hb-sub"><span>つかった ${yen(spent)} ／ ${yen(b.amount)}</span><span class="${rest < 0 ? 'over' : ''}">のこり ${yen(rest)}</span></div>
         </div>`;
+    };
+    const spans = [...data.spanBudgets].sort((a, b) => b.start.localeCompare(a.start));
+    const spanHtml = spans.length ? `<div class="hist-month">
+        <div class="hist-head"><span>🌙 月をまたぐ予算</span></div>
+        ${spans.map(b => {
+          // タップしたときに開く月：今月が期間内なら今月、そうでなければ期間の端
+          const m = inSpan(b, nowM) ? nowM : (nowM < b.start ? b.start : spanEnd(b));
+          return histRow(b, m, sum(budgetExpenses(b)), `<div class="span-badge" style="margin:2px 0 0">${spanLabel(b)}</div>`);
+        }).join('')}</div>` : '';
+    $('historyList').innerHTML = spanHtml + sorted.map(m => {
+      const exps = expensesOf(m);
+      const rows = monthlyBudgetsOf(m).map(b => {
+        return histRow(b, m, sum(exps.filter(e => e.budgetId === b.id)));
       });
       const none = exps.filter(e => !findBudget(m, e.budgetId));
       if (none.length) {
@@ -515,7 +559,7 @@
         <div class="hist-head" data-m="${m}"><span>${monthLabel(m)}</span><small>この月をひらく ›</small></div>
         ${rows.join('')}</div>`;
     }).join('');
-    $('historyList').querySelectorAll('.hist-head').forEach(el => el.onclick = () => { currentMonth = el.dataset.m; switchTab('home'); });
+    $('historyList').querySelectorAll('.hist-head[data-m]').forEach(el => el.onclick = () => { currentMonth = el.dataset.m; switchTab('home'); });
     $('historyList').querySelectorAll('.hb').forEach(el => el.onclick = ev => {
       ev.stopPropagation(); currentMonth = el.dataset.m; budgetFilter = el.dataset.b; tagFilter = null; switchTab('records');
     });
@@ -556,7 +600,7 @@
   function fillBudgetSelect(m, selectedId) {
     const budgets = budgetsOf(m);
     const sel = $('exBudget');
-    sel.innerHTML = budgets.map(b => `<option value="${b.id}">${esc(b.name)}</option>`).join('') +
+    sel.innerHTML = budgets.map(b => `<option value="${b.id}">${b.span ? '🌙 ' : ''}${esc(b.name)}</option>`).join('') +
       `<option value="">（予算なし）</option>`;
     sel.value = budgets.some(b => b.id === selectedId) ? selectedId : (budgets[0] ? budgets[0].id : '');
   }
@@ -641,17 +685,38 @@
     $('bdColors').querySelectorAll('button').forEach(b => b.onclick = () => { bdColor = b.dataset.c; renderColors(); });
   }
 
+  let bdKind = 'month';
+
+  function renderBdKind() {
+    $('bdKind').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.k === bdKind));
+    $('bdSpanFields').hidden = bdKind !== 'span';
+    const start = $('bdStart').value, months = parseInt($('bdMonths').value, 10);
+    $('bdSpanNote').textContent = /^\d{4}-\d{2}$/.test(start) && months >= 1
+      ? `${spanLabel({ start, months })} のあいだ、毎月同じ予算として表示され、期間中の支出がずっと合計されます。`
+      : '';
+  }
+  $('bdKind').querySelectorAll('button').forEach(b => b.onclick = () => { bdKind = b.dataset.k; renderBdKind(); });
+  $('bdStart').addEventListener('input', renderBdKind);
+  $('bdMonths').addEventListener('input', renderBdKind);
+
+  // 毎月の予算として最初に登場する月（コピーで同じ id が引き継がれている）
+  const firstMonthOf = id => Object.keys(data.months).sort().find(m => monthlyBudgetsOf(m).some(b => b.id === id));
+
   function openBudget(id) {
     editingBudget = id ? findBudget(currentMonth, id) : null;
     const b = editingBudget;
-    $('budgetTitle').textContent = b ? `予算をなおす（${monthLabel(currentMonth)}）` : `予算をつくる（${monthLabel(currentMonth)}）`;
+    $('budgetTitle').textContent = b ? (b.span ? '予算をなおす' : `予算をなおす（${monthLabel(currentMonth)}）`) : `予算をつくる（${monthLabel(currentMonth)}）`;
     $('bdName').value = b ? b.name : '';
     $('bdAmount').value = b ? b.amount : '';
     bdColor = b ? b.color : COLORS[budgetsOf(currentMonth).length % COLORS.length];
     renderColors();
-    const used = b ? expensesOf(currentMonth).filter(e => e.budgetId === b.id).length : 0;
+    bdKind = b && b.span ? 'span' : 'month';
+    $('bdStart').value = b ? (b.span ? b.start : (firstMonthOf(b.id) || currentMonth)) : currentMonth;
+    $('bdMonths').value = b && b.span ? b.months : 6;
+    renderBdKind();
+    const used = b ? budgetExpenses(b, currentMonth).length : 0;
     $('bdNote').hidden = !used;
-    $('bdNote').textContent = used ? `この予算には今月 ${used} 件の支出があります。削除すると支出は「予算なし」になります。` : '';
+    $('bdNote').textContent = used ? `この予算には${b.span ? '期間中' : '今月'} ${used} 件の支出があります。削除すると支出は「予算なし」になります。` : '';
     $('bdDelete').hidden = !b;
     openModal('budgetModal');
   }
@@ -661,16 +726,44 @@
     const amount = Number($('bdAmount').value);
     if (!name) return toast('名前を入れてね');
     if (!(amount >= 0) || $('bdAmount').value === '') return toast('金額を入れてね');
-    if (editingBudget) Object.assign(editingBudget, { name, amount: Math.round(amount), color: bdColor });
-    else ensureMonth(currentMonth).budgets.push({ id: uid(), name, amount: Math.round(amount), color: bdColor });
+    const fields = { name, amount: Math.round(amount), color: bdColor };
+    const b = editingBudget;
+
+    if (bdKind === 'span') {
+      const start = $('bdStart').value;
+      const months = parseInt($('bdMonths').value, 10);
+      if (!/^\d{4}-\d{2}$/.test(start)) return toast('はじまりの月を入れてね');
+      if (!(months >= 1 && months <= 60)) return toast('期間は1〜60か月で入れてね');
+      if (b && b.span) {
+        Object.assign(b, fields, { start, months });
+      } else {
+        const nb = { id: b ? b.id : uid(), ...fields, span: true, start, months };
+        if (b) {
+          // 毎月の予算から切りかえ：期間内の月にコピーされていた同じ予算を取りのぞく
+          Object.keys(data.months).forEach(m => {
+            if (inSpan(nb, m) || m === currentMonth) data.months[m].budgets = data.months[m].budgets.filter(x => x.id !== nb.id);
+          });
+        }
+        data.spanBudgets.push(nb);
+      }
+    } else if (b && b.span) {
+      // 月をまたぐ予算から毎月の予算へ：この月の予算としてもどす
+      data.spanBudgets = data.spanBudgets.filter(x => x !== b);
+      ensureMonth(currentMonth).budgets.push({ id: b.id, ...fields });
+    } else if (b) {
+      Object.assign(b, fields);
+    } else {
+      ensureMonth(currentMonth).budgets.push({ id: uid(), ...fields });
+    }
     save(); closeModal('budgetModal'); render();
-    toast(editingBudget ? 'なおしました ✧' : 'つくりました ✧');
+    toast(b ? 'なおしました ✧' : 'つくりました ✧');
   };
 
   $('bdDelete').onclick = () => {
-    if (!editingBudget || !confirm(`「${editingBudget.name}」を${monthLabel(currentMonth)}から削除しますか？`)) return;
-    const m = ensureMonth(currentMonth);
-    m.budgets = m.budgets.filter(b => b !== editingBudget);
+    const b = editingBudget;
+    if (!b || !confirm(b.span ? `「${b.name}」（${spanLabel(b)}）を削除しますか？` : `「${b.name}」を${monthLabel(currentMonth)}から削除しますか？`)) return;
+    if (b.span) data.spanBudgets = data.spanBudgets.filter(x => x !== b);
+    else { const m = ensureMonth(currentMonth); m.budgets = m.budgets.filter(x => x !== b); }
     save(); closeModal('budgetModal'); render(); toast('削除しました');
   };
 
@@ -691,7 +784,7 @@
       const d = JSON.parse(await f.text());
       if (!d || !d.months || !Array.isArray(d.expenses)) throw new Error('bad');
       if (!confirm('いまのデータを読み込んだデータで置きかえます。よろしいですか？')) return;
-      data = d; save(); render(); toast('読み込みました ✧');
+      data = normalize(d); save(); render(); toast('読み込みました ✧');
     } catch (e) { toast('読み込めないファイルでした'); }
   };
 
